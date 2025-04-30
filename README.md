@@ -138,6 +138,40 @@ Le fichier final contient :
   - Méthodes : `compute_embeddings()`, `compute_centroids()`, `suggest_reclassification()`
 
 ---
+## 📊 Visualisation des reclassements majeurs
+Le graphique ci-dessous montre les 10 univers originaux ayant connu le plus de reclassements, ainsi que les nouvelles catégories proposées :
+
+![Changements d'univers](téléchargement%20resss.png)
+
+## 📈 Analyse des résultats et justifications des erreurs
+Suite à l'application du modèle de recatégorisation, plusieurs reclassements erronés ou surprenants ont été observés. Bien que certaines suggestions soient cohérentes, d'autres révèlent les limites du modèle. Voici les principales raisons possibles :
+
+### 1. Seuil de similarité trop permissif
+Le modèle accepte une reclassification si la similarité cosinus dépasse un certain seuil. Un seuil trop bas (ex. 0.6) peut autoriser des suggestions peu fiables.
+
+➡️ *Exemple* : une similarité de 0.63 peut sembler proche mais indique une confiance moyenne.
+
+### 2. Données d'entraînement incomplètes ou déséquilibrées
+Certaines catégories sont sous-représentées dans l'ensemble d'apprentissage, biaisant l'estimation des vecteurs moyens (centroïdes).
+
+➡️ *Exemple* : une catégorie comme "Bureau Rangement" avec peu d'exemples sera mal modélisée.
+
+### 3. Libellés produits peu explicites
+Le modèle ne dispose que du champ "Libellé produit", souvent trop court ou ambigu.
+
+➡️ *Exemple* : un libellé comme "Ensemble 3 pièces" n’indique rien de spécifique.
+
+### 4. Proximité sémantique entre catégories
+Certaines catégories sont sémantiquement proches (ex. "Chambre Literie" vs "Décoration Textile"), rendant leur distinction difficile sans connaissances métiers supplémentaires.
+
+## ✅ Recommandations
+- Élever le seuil de similarité pour éviter les reclassifications peu fiables.
+- Ajouter des données contextuelles si disponibles (ex. description, usage, attributs).
+- Introduire une étape de validation humaine pour les suggestions incertaines.
+- Affiner les centroïdes en rééquilibrant les catégories sous-représentées.
+
+---
+
 
 ## Limites et perspectives
 
