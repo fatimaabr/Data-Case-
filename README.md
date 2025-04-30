@@ -43,20 +43,23 @@ pip install -r requirements.txt
 
 ### 1. Chargement & Nettoyage
 
-- Suppression des colonnes inutiles (`Cod_cmd`, `Vendeur`, etc.)
+- Suppression des colonnes inutiles (`Cod_cmd`, `Vendeur`,`Date de commande`,	`Montant cmd`, `Quantité`,	`Prix transport`,	`Délai transport annoncé`)
 - Suppression des lignes avec `Libellé produit` manquant
-- Nettoyage du texte (minuscule, accents, ponctuations)
-- Suppression des doublons
+- Nettoyage du texte  `Libellé produit` (minuscule, accents, ponctuations)
+- Suppression des doublons (`Libellé produit`) (Réduit significativement la taille du dataset)
 
 ### 2. Traitement des catégories
 
-- Suppression des lignes sans `Univers` et `Nature`
+- Suppression des lignes sans `Univers` et `Nature` (Sont généralement des services et non pas des produits)
 - Prédiction des `Univers` manquants à partir de `Libellé produit` via un modèle TF-IDF + Logistic Regression
 
 ### 3. Feature Engineering
 
 - Extraction des couleurs via correspondances regex
-- Extraction des dimensions (simple : `40cm`, double : `120x200cm`)
+- Extraction des dimensions :
+  - Les dimensions simples comme `40cm` sont détectées via des expressions régulières ciblant des motifs numériques suivis de `cm`, `mm`, etc.
+  - Les dimensions doubles comme `120x200cm` sont identifiées avec des motifs de type `nombre x nombre` suivis d'une unité.
+  - Une normalisation est appliquée pour unifier les formats extraits.
 
 ### 4. Embedding & Reclassement avec CamemBERT
 
@@ -104,8 +107,46 @@ Le fichier final contient :
 ├── classification_pipeline.ipynb   # Notebook complet avec tout le code (classes et pipeline)
 ├── requirements.txt
 ├── data/
-│   └── e_commerce.csv
+│   └── dataset_nettoye.csv
 ├── results/
 │   └── resultat_reclasse.csv
 └── README.md
 ```
+
+## Classes principales
+
+- `Processing`
+  - Inspection des données (dimensions, types, premières et dernières lignes).
+  - Vérification des valeurs manquantes et des doublons.
+  - Suppression des colonnes inutiles et des lignes avec des étiquettes manquantes.
+
+- `TextCleaner`
+  - Nettoie les libellés produits (minuscule, accents, ponctuation, etc.)
+  - Méthodes principales : `clean_text()`, `remove_punctuation()`, `normalize_text()`
+
+- `ProcessingModeler`
+  - Prédit les catégories manquantes (`Univers`) via un modèle TF-IDF + LogisticRegression
+  - Méthodes : `fit()`, `predict()`
+
+- `FeatureExtractor`
+  - Extrait des attributs produits comme : couleurs, dimensions simples, dimensions doubles
+  - Méthodes : `extract_colors()`, `extract_dimensions()`
+
+- `CamembertReclassifier`
+  - Encode les libellés produits avec CamemBERT
+  - Calcule les similarités cosinus pour évaluer la cohérence des catégories
+  - Méthodes : `compute_embeddings()`, `compute_centroids()`, `suggest_reclassification()`
+
+---
+
+## Limites et perspectives
+
+- Le modèle TF-IDF + LogisticRegression reste sensible aux formulations non standards.
+- L’approche par embeddings dépend fortement de la qualité du sous-échantillon.
+
+### Améliorations possibles :
+
+- Intégration de modèles de classification plus robustes (CamemBERT finetuné, LLM)
+- Reclassement automatique avec seuils adaptatifs plutôt que suggestion simple
+- Interface utilisateur pour la revue manuelle des cas ambigus
+- Évaluation systématique des performances (classification accuracy, F1-score)
