@@ -1,6 +1,6 @@
 # Classification de Produits e-Commerce
 
-Ce projet vise à enrichir un dataset e-commerce en complétant les catégories manquantes (`Univers`, `Nature`) et en proposant des reclassements pertinents via un pipeline combinant des méthodes supervisées, des règles, et des embeddings avec CamemBERT.
+Ce projet vise à enrichir un dataset e-commerce en complétant les catégories manquantes (`Univers`) et en proposant des reclassements pertinents via un pipeline combinant des méthodes supervisées, des règles, et des embeddings avec CamemBERT.
 
 ---
 
