@@ -1,151 +1,111 @@
-# 💼 Classification et Reclassification de Produits E-commerce
+# Classification de Produits e-Commerce
 
-Ce projet permet de :
-1. Compléter automatiquement les catégories manquantes (`Univers`, `Nature`) d’un produit e-commerce.
-2. Détecter des anomalies dans les étiquettes existantes à l’aide d’embeddings CamemBERT.
-3. Suggérer des reclassifications plus cohérentes.
-4. Extraire automatiquement des attributs comme **les couleurs** et **les dimensions**.
+Ce projet vise à enrichir un dataset e-commerce en complétant les catégories manquantes (`Univers`, `Nature`) et en proposant des reclassements pertinents via un pipeline combinant des méthodes supervisées, des règles, et des embeddings avec CamemBERT.
 
 ---
 
-## 📦 Installation
+## Sommaire
+
+1. [Pré-requis](#pré-requis)
+2. [Pipeline général](#pipeline-général)
+3. [Étapes détaillées](#étapes-détaillées)
+4. [Embedding & Reclassement avec CamemBERT](#embedding--reclassement-avec-camembert)
+5. [Exécution](#exécution)
+6. [Résultats attendus](#résultats-attendus)
+7. [Structure du dépôt](#structure-du-dépôt)
+
+---
+
+## Pré-requis
+
+- Python ≥ 3.8
+- `scikit-learn`, `pandas`, `nltk`, `sentence-transformers`, `unidecode`
+
+Installer les dépendances :
 
 ```bash
-pip install pandas numpy scikit-learn nltk unidecode sentence-transformers
-```
-
-```python
-import nltk
-nltk.download('stopwords')
+pip install -r requirements.txt
 ```
 
 ---
 
-## 📁 Structure des fichiers
+## Pipeline général
 
-```text
+1. Chargement et inspection des données
+2. Nettoyage des libellés produits
+3. Traitement des colonnes manquantes (Univers, Nature)
+4. Extraction de features (couleurs, dimensions)
+5. Embedding via CamemBERT et suggestion de reclassement
+
+---
+
+## Étapes détaillées
+
+### 1. Chargement & Nettoyage
+
+- Suppression des colonnes inutiles (`Cod_cmd`, `Vendeur`, etc.)
+- Suppression des lignes avec `Libellé produit` manquant
+- Nettoyage du texte (minuscule, accents, ponctuations)
+- Suppression des doublons
+
+### 2. Traitement des catégories
+
+- Suppression des lignes sans `Univers` et `Nature`
+- Prédiction des `Univers` manquants à partir de `Libellé produit` via un modèle TF-IDF + Logistic Regression
+
+### 3. Feature Engineering
+
+- Extraction des couleurs via correspondances regex
+- Extraction des dimensions (simple : `40cm`, double : `120x200cm`)
+
+### 4. Embedding & Reclassement avec CamemBERT
+
+L’objectif est de vérifier si les étiquettes `Univers` et `Nature` déjà présentes dans les données sont cohérentes avec le contenu du `Libellé produit`.
+
+#### Méthode :
+
+1. **Embedding** : chaque `Libellé produit` est transformé en vecteur avec `SentenceTransformer("dangvantuan/sentence-camembert-large")`.
+2. **Vecteurs de référence** : pour chaque catégorie (`Univers`, `Nature`), on calcule un vecteur moyen à partir des produits connus de cette catégorie.
+3. **Similarité cosinus** : on compare le vecteur du produit à celui de sa catégorie :
+   - Si la similarité est **faible** avec la catégorie assignée
+   - Et qu'une autre catégorie a une **similarité plus élevée**
+   → Cela est considéré comme **potentiellement anormal** : une suggestion de reclassement est alors faite.
+
+💡 Cette approche permet de **détecter des incohérences sémantiques** entre le texte du produit et sa classification actuelle.
+
+💡 **Note :** Pour des raisons de limitations CPU/GPU, les embeddings ont été générés sur un sous-échantillon de 10 000 lignes :
+```python
+# df = df_full.sample(n=10000, random_state=42).reset_index(drop=True)
+```
+
+---
+
+## Exécution
+
+L’ensemble des étapes est contenu dans un **notebook Colab unique** incluant toutes les classes et l'exécution complète du pipeline.
+
+---
+
+## Résultats attendus
+
+Le fichier final contient :
+
+- `Univers` et `Nature` remplis ou reclassés
+- Suggestions de reclassement (`Univers suggéré`, `Nature suggérée`)
+- Scores de similarité
+- Couleurs et dimensions détectées
+
+---
+
+## Structure du dépôt
+
+```bash
 .
-├── preprocessing.py         # Nettoyage, extraction d'attributs
-├── modeling.py              # Modèles de prédiction supervisée
-├── camembert_reclass.py     # Embeddings + suspicion + suggestion
-├── data/                    # Données CSV
-├── embeddings/              # Sauvegarde des embeddings
+├── classification_pipeline.ipynb   # Notebook complet avec tout le code (classes et pipeline)
+├── requirements.txt
+├── data/
+│   └── e_commerce.csv
+├── results/
+│   └── resultat_reclasse.csv
 └── README.md
 ```
-
----
-
-## 🔧 1. Nettoyage et préparation des données
-
-```python
-from preprocessing import Processing, TextCleaner
-
-p = Processing("data/produits.csv")
-p.inspect_data()
-p.remove_unused_columns()
-p.remove_rows_with_all_labels_missing()
-p.clean_labels()
-df = p.get_data()
-
-tc = TextCleaner(df)
-tc.apply_cleaning()
-df_clean = tc.get_data()
-```
-
----
-
-## 🧠 2. Prédiction des catégories manquantes
-
-```python
-from modeling import ProcessingModeler
-
-modeler = ProcessingModeler(df_clean)
-df_pred = modeler.predict_missing_univers()
-```
-
----
-
-## 🎨 3. Extraction de couleurs et dimensions
-
-```python
-from preprocessing import FeatureExtractor
-
-extractor = FeatureExtractor(df_pred)
-extractor.apply()
-df_feat = extractor.get_data()
-```
-
----
-
-## 🧪 4. Détection de suspicion + suggestions CamemBERT
-
-```python
-from camembert_reclass import CamembertReclassifier
-
-camembert = CamembertReclassifier()
-df_final = camembert.run(df_feat)
-```
-
----
-
-## 💾 (Optionnel) Sauvegarde/Rechargement des embeddings
-
-```python
-# Sauvegarde
-import pickle
-with open("embeddings/df_embeddings.pkl", "wb") as f:
-    pickle.dump(df_final, f)
-
-# Chargement
-camembert = CamembertReclassifier(precomputed_embeddings_path="embeddings/df_embeddings.pkl")
-df_final = camembert.run(df_final)
-```
-
----
-
-## 📊 Colonnes finales produites
-
-- `Univers`, `Nature` : Catégories initiales ou complétées
-- `sim_univers`, `sim_nature` : Similarités Cosine avec le libellé
-- `univers_suspect`, `nature_suspect` : Drapeau de suspicion
-- `Univers suggéré`, `Nature suggérée` : Catégories recommandées si suspicion
-- `couleurs`, `dimensions` : Attributs extraits
-
----
-
-## 🔀 Pipeline résumé
-
-```python
-from preprocessing import Processing, TextCleaner, FeatureExtractor
-from modeling import ProcessingModeler
-from camembert_reclass import CamembertReclassifier
-
-# 1. Prétraitement
-df = Processing("data/produits.csv").remove_unused_columns().remove_rows_with_all_labels_missing().clean_labels().get_data()
-df = TextCleaner(df).apply_cleaning().get_data()
-
-# 2. Prédiction
-df = ProcessingModeler(df).predict_missing_univers()
-
-# 3. Extraction attributs
-df = FeatureExtractor(df).apply().get_data()
-
-# 4. Détection & suggestion
-df_final = CamembertReclassifier().run(df)
-```
-
----
-
-## 📌 Paramètres importants
-
-- `threshold_quantile` : Seuil de similarité basé sur les quantiles (ex: 0.25)
-- `confidence_margin` : Marge exigée entre catégorie actuelle et catégorie suggérée (ex: 0.1)
-
----
-
-## 🛠️ Développement
-
-Réalisé par **Fatima Aboura** – Test technique pour **Nricher**, avril 2025.
-
-Librairie utilisée pour les embeddings :  
-[📚 SentenceTransformers - CamemBERT](https://huggingface.co/dangvantuan/sentence-camembert-large)
